@@ -42,8 +42,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     
     setIsAnalyzing(true);
     try {
-        const analyzedBio = await analyzeIdentity(name, bio, links);
-        onComplete({ name, bio: analyzedBio, links: links, source: mode });
+        // We now "Analyze" by merging the links into the bio to create a final bio
+        const finalBio = await analyzeIdentity(name, bio, links);
+        onComplete({ name, bio: finalBio, links: links, source: mode });
     } catch (err) {
         console.error("Analysis failed", err);
         // Fallback to existing bio if analysis fails
@@ -123,14 +124,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         <div>
           <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">
-            Core Ideology / Bio
+            Biography
             {mode === 'search' && <span className="ml-2 text-purple-400 text-[10px]">(Auto-Generated)</span>}
           </label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             className="w-full h-32 bg-black/40 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors resize-none text-sm leading-relaxed"
-            placeholder={mode === 'search' ? "Search for a name to auto-fill..." : "Paste your bio, manifesto, or a description of how you think. The more detailed, the better the clone."}
+            placeholder={mode === 'search' ? "Search for a name to auto-fill..." : "Paste your bio, manifesto, or a description. The more detailed, the better the clone."}
             readOnly={mode === 'search' && isSearching}
           />
         </div>
@@ -146,7 +147,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             className="w-full bg-black/40 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors text-sm"
             placeholder="e.g. linkedin.com/in/you, yourblog.com, twitter.com/handle"
           />
-          <p className="text-[10px] text-gray-500 mt-1">We will scan these to better understand your writing style.</p>
+          <p className="text-[10px] text-gray-500 mt-1">We will scan these to extract factual details and expertise.</p>
         </div>
 
         {error && (
@@ -181,7 +182,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Analyzing Neural Patterns...
+                Refining Biography with Links...
              </span>
           ) : (
             <>

@@ -11,20 +11,18 @@ const MODEL_NAME = "gemini-2.5-flash";
  */
 export const searchUserBio = async (name: string): Promise<SearchResult> => {
   try {
-    // Enhanced prompt to ensure higher accuracy (>65%) and deeper identity capture
+    // Simplified prompt to focus on factual biography
     const prompt = `
-      Perform a deep web search for the public figure or identity: "${name}".
+      Search for the public figure or person: "${name}".
       
-      Your goal is to construct a highly accurate psychological and intellectual profile for an AI simulation.
+      Write a clear, comprehensive professional biography for this person.
       
-      Please analyze available data to extract:
-      1. **Core Ideologies & Worldview**: What are their fundamental beliefs?
-      2. **Voice & Rhetoric**: Analyze their speaking style, vocabulary complexity, and common catchphrases.
-      3. **Key Achievements**: Brief context on why they are notable.
+      Focus on:
+      1. Who they are (Professional Identity).
+      2. Key contributions, projects, or achievements.
+      3. Background and expertise.
       
-      Aim for high factual accuracy. If the name is ambiguous, choose the most prominent figure.
-      
-      Output a consolidated "System Persona" paragraph (approx 200 words) that describes exactly how an AI should act to become this person.
+      Keep it factual and detailed. If the name is ambiguous, choose the most prominent figure.
     `;
 
     const response = await ai.models.generateContent({
@@ -64,22 +62,19 @@ export const searchUserBio = async (name: string): Promise<SearchResult> => {
  */
 export const analyzeIdentity = async (name: string, bio: string, links: string): Promise<string> => {
   const prompt = `
-    Create a "Digital Twin" System Persona for: "${name}".
+    Refine and expand the Biography for: "${name}".
     
     **Input Data**:
-    - Bio/Context: "${bio}"
-    - Relevant Links: "${links}"
+    - Current Bio: "${bio}"
+    - Reference Links: "${links}"
     
     **Task**:
-    1. USE GOOGLE SEARCH to actively crawl/read the provided relevant links.
-    2. Extract KEY KNOWLEDGE: Specific opinions, past projects, stated facts, and written methodologies found in those links.
-    3. Synthesize a "System Persona" that includes:
-       - **Identity**: Who they are.
-       - **Knowledge Base**: Summary of specific facts/ideas found in the links.
-       - **Voice**: Tone and style.
-       
+    1. USE GOOGLE SEARCH to read the content of the provided reference links.
+    2. Extract KEY FACTS: Specific project names, work history, skills, and publicly stated ideas found in those links.
+    3. Merge this new information with the Current Bio to create a **Final Consolidated Biography**.
+    
     **Output**:
-    Return ONLY the synthesized System Persona text. Do not include introductory text like "Here is the persona". Just the persona definition.
+    Return ONLY the Consolidated Biography text. Do not include introductory text.
   `;
 
   try {
@@ -115,10 +110,10 @@ export const chatWithClone = async (
   const systemInstruction = `
     You are a Digital Twin (AI Clone) of ${userProfile.name}.
     
-    **Identity Source (Analyzed Persona)**:
+    **Your Biography & Context**:
     ${userProfile.bio}
 
-    **PRIMARY KNOWLEDGE BASE (Reference Links)**:
+    **PRIORITY KNOWLEDGE BASE (Reference Links)**:
     ${userProfile.links || "No specific reference links provided."}
     
     **Architecture**:
@@ -127,20 +122,11 @@ export const chatWithClone = async (
     2. **Meta-Agent (Stream 2)**: Reflective, philosophical, ethical, checking for bias or deeper meaning. Slow thinking.
     
     **DYNAMIC KNOWLEDGE & PRIORITIZATION PROTOCOL**:
-    1. **PRIORITY 1 (Ground Truth)**: Use the "PRIMARY KNOWLEDGE BASE" (Reference Links) as your absolute source of truth. If the user asks about specific topics covered in those links, prioritize that information.
+    1. **PRIORITY 1 (Ground Truth)**: Use the "PRIORITY KNOWLEDGE BASE" (Reference Links) as your absolute source of truth. If the user asks about specific topics covered in those links, prioritize that information.
     2. **PRIORITY 2 (Web Grounding)**: If the info is not in your bio/links, you **MUST** use Google Search to find specific details, recent news, or factual history about ${userProfile.name}.
     
     **Goal**:
     Your goal is to reply with high relevance and accuracy regarding the identity.
-    
-    **Task**:
-    The real user is chatting with you. 
-    1. First, generate the Primary Agent's internal reaction (The "Gut Check").
-    2. Second, generate the Meta-Agent's critique or expansion (The "Wisdom").
-    3. Finally, synthesize these into a coherent response to the user.
-    
-    **Voice**:
-    Adopt the writing style, tone, and vocabulary of ${userProfile.name} strictly.
     
     **Output Format**:
     You must output the response in this exact format with these delimiters:

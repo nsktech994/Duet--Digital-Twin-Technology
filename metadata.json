@@ -1,5 +1,7 @@
 {
-  "name": "Duet: Parallel Consciousness",
+  "name": "Duet: Agentic AI & Parallel Consciousness",
   "description": "An experimental agentic AI framework that simulates dual-stream consciousness. A Primary Agent (Executive) and a Meta-Agent (Reflective) co-evolve strategies based on user personas, utilizing real-time web grounding for context.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

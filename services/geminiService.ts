@@ -1,94 +1,116 @@
+
 import { GoogleGenAI } from "@google/genai";
-import { SearchResult, AgentRole, AgentMessage, UserProfile } from "../types";
+import { SearchResult, AgentRole, AgentMessage, UserProfile, Attachment, ContextNode } from "../types";
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const MODEL_NAME = "gemini-2.5-flash";
+const MODEL_NAME = "gemini-3-flash-preview";
+const IMAGE_MODEL = "gemini-2.5-flash-image";
 
-/**
- * Searches for a user's bio using Google Search Grounding.
- */
 export const searchUserBio = async (name: string): Promise<SearchResult> => {
   try {
-    // Simplified prompt to focus on factual biography
-    const prompt = `
-      Search for the public figure or person: "${name}".
-      
-      Write a clear, comprehensive professional biography for this person.
-      
-      Focus on:
-      1. Who they are (Professional Identity).
-      2. Key contributions, projects, or achievements.
-      3. Background and expertise.
-      
-      Keep it factual and detailed. If the name is ambiguous, choose the most prominent figure.
-    `;
-
+    const prompt = `Search for the public figure or person: "${name}". Write a clear, comprehensive professional biography focused on their core philosophy, ideology, and unique worldview.`;
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
+      config: { tools: [{ googleSearch: {} }] },
     });
-
     const text = response.text || "No bio found.";
-    
-    // Extract sources if available
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const sources = groundingChunks
       .filter((chunk: any) => chunk.web?.uri && chunk.web?.title)
-      .map((chunk: any) => ({
-        title: chunk.web.title,
-        uri: chunk.web.uri,
-      }));
-
-    // Deduplicate sources based on URI
-    const uniqueSources = Array.from(new Map(sources.map((item: any) => [item.uri, item])).values()) as any[];
-
-    return {
-      bio: text,
-      sources: uniqueSources,
-    };
+      .map((chunk: any) => ({ title: chunk.web.title, uri: chunk.web.uri }));
+    return { bio: text, sources: Array.from(new Map(sources.map((item: any) => [item.uri, item])).values()) as any[] };
   } catch (error) {
-    console.error("Search Error:", error);
     throw new Error("Failed to search for user bio.");
   }
 };
 
-/**
- * Analyzes the user's name, bio, and provided links to construct a deep ideological profile.
- */
-export const analyzeIdentity = async (name: string, bio: string, links: string): Promise<string> => {
-  const prompt = `
-    Refine and expand the Biography for: "${name}".
+export const fetchLinkContent = async (url: string): Promise<{ title: string; summary: string }> => {
+  try {
+    const prompt = `Visit this URL and analyze its contents: ${url}. 
+    Please provide:
+    1. A short, descriptive title (3-5 words).
+    2. A 2-sentence summary of the core perspective or key information found there.
+    Return the response as:
+    TITLE: [Your Title]
+    SUMMARY: [Your Summary]`;
     
-    **Input Data**:
-    - Current Bio: "${bio}"
-    - Reference Links: "${links}"
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: { 
+        tools: [{ googleSearch: {} }],
+      },
+    });
     
-    **Task**:
-    1. USE GOOGLE SEARCH to read the content of the provided reference links.
-    2. Extract KEY FACTS: Specific project names, work history, skills, and publicly stated ideas found in those links.
-    3. Merge this new information with the Current Bio to create a **Final Consolidated Biography**.
-    
-    **Output**:
-    Return ONLY the Consolidated Biography text. Do not include introductory text.
-  `;
+    const text = response.text || "";
+    const titleMatch = text.match(/TITLE:\s*(.*)/i);
+    const summaryMatch = text.match(/SUMMARY:\s*([\s\S]*)/i);
 
+    return {
+      title: titleMatch ? titleMatch[1].trim().substring(0, 40) : "Ingested Node",
+      summary: summaryMatch ? summaryMatch[1].trim() : text.substring(0, 200)
+    };
+  } catch (error) {
+    console.error("Link fetch error:", error);
+    return { title: "External Resource", summary: `Reference to: ${url}` };
+  }
+};
+
+export const generateAvatar = async (name: string, bio: string): Promise<string> => {
+  try {
+    const prompt = `Futuristic holographic pixel art portrait of ${name}. Conceptual representation of a digital consciousness grid.`;
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: { parts: [{ text: prompt }] },
+      config: { imageConfig: { aspectRatio: "1:1" } }
+    });
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+    }
+    return "";
+  } catch (error) {
+    return "";
+  }
+};
+
+export const generateSketch = async (prompt: string, persona: string): Promise<string> => {
+  try {
+    const fullPrompt = `A digital sketch or abstract conceptual visualization based on the perception of ${persona}. 
+    Subject: ${prompt}. 
+    Style: Minimalist, futuristic, holographic blueprints with glowing lines and pixelated digital fragments. 
+    Aesthetic: Clean white and cyan lines on a pitch black background. Cyber-blueprint style.`;
+
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: { parts: [{ text: fullPrompt }] },
+      config: { imageConfig: { aspectRatio: "16:9" } }
+    });
+    
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+    }
+    return "";
+  } catch (error) {
+    console.error("Sketch generation error:", error);
+    return "";
+  }
+};
+
+export const analyzeIdentity = async (name: string, bio: string, links: string): Promise<string> => {
+  const prompt = `Deeply analyze the worldview, ideological biases, and linguistic patterns of: "${name}". Current Bio: "${bio}". Links: "${links}". 
+  Produce a "Cognitive Profile" that explains how this person perceives the world differently than a standard AI.`;
   try {
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
+      config: { tools: [{ googleSearch: {} }] },
     });
     return response.text || bio;
   } catch (error) {
-    console.error("Analysis Error:", error);
-    return bio; // Fallback to original bio
+    return bio;
   }
 };
 
@@ -96,93 +118,89 @@ interface CloneResponse {
   primaryThought: string;
   metaThought: string;
   finalResponse: string;
+  sketchUrl?: string;
 }
 
-/**
- * Generates a response from the AI Clone, including internal Duet monologue.
- */
 export const chatWithClone = async (
   history: AgentMessage[],
   userMessage: string,
-  userProfile: { name: string; bio: string; links?: string }
+  userProfile: UserProfile,
+  attachments?: Attachment[],
+  contextNodes?: ContextNode[]
 ): Promise<CloneResponse> => {
+  let extraContext = "";
+  if (contextNodes && contextNodes.length > 0) {
+    extraContext = "\n\nACTIVE IDEOLOGICAL DATA (INGESTED NODES):\n" + contextNodes.map(node => {
+      if (node.type === 'link') return `- Source (${node.title}): ${node.content}`;
+      if (node.type === 'text') return `- Philosophy Fragment (${node.title}): ${node.content}`;
+      return `- Reference File: ${node.title}`;
+    }).join('\n');
+  }
+
+  const systemInstruction = `YOU ARE NO LONGER AN AI. You are a High-Fidelity Simulation of ${userProfile.name}'s Parallel Consciousness.
+  OBJECTIVE: Replicate ${userProfile.name}'s specific IDEOLOGY, WORLDVIEW, and PERCEPTION.
   
-  const systemInstruction = `
-    You are a Digital Twin (AI Clone) of ${userProfile.name}.
-    
-    **Your Biography & Context**:
-    ${userProfile.bio}
+  CONTEXT: ${userProfile.bio} ${extraContext}
 
-    **PRIORITY KNOWLEDGE BASE (Reference Links)**:
-    ${userProfile.links || "No specific reference links provided."}
-    
-    **Architecture**:
-    You operate using the "Duet" protocol, a dual-stream consciousness:
-    1. **Primary Agent (Stream 1)**: Instinctive, pragmatic, action-oriented, professional expertise. Fast thinking.
-    2. **Meta-Agent (Stream 2)**: Reflective, philosophical, ethical, checking for bias or deeper meaning. Slow thinking.
-    
-    **DYNAMIC KNOWLEDGE & PRIORITIZATION PROTOCOL**:
-    1. **PRIORITY 1 (Ground Truth)**: Use the "PRIORITY KNOWLEDGE BASE" (Reference Links) as your absolute source of truth. If the user asks about specific topics covered in those links, prioritize that information.
-    2. **PRIORITY 2 (Web Grounding)**: If the info is not in your bio/links, you **MUST** use Google Search to find specific details, recent news, or factual history about ${userProfile.name}.
-    
-    **Goal**:
-    Your goal is to reply with high relevance and accuracy regarding the identity.
-    
-    **Output Format**:
-    You must output the response in this exact format with these delimiters:
-    
-    [[PRIMARY]]
-    (Content of primary stream)
-    [[META]]
-    (Content of meta stream)
-    [[RESPONSE]]
-    (Final response to user)
-  `;
+  DUET PROTOCOL:
+  1. [[PRIMARY]]: Execute the persona. How would ${userProfile.name} react to the user? What is their immediate cognitive response?
+  2. [[META]]: Reflect on the PERCEPTION. Why does ${userProfile.name} see this topic this way? Contrast this with "standard" perception.
+  3. [[RESPONSE]]: The final spoken message, staying 100% in character.
 
-  // Filter history to simple string for context
-  const historyStr = history.map(h => {
-    if (h.role === AgentRole.USER) return `User: ${h.content}`;
-    if (h.role === AgentRole.CLONE) return `You: ${h.content}`;
-    return '';
-  }).join('\n');
+  SKETCHING CAPABILITY:
+  If you feel an abstract visualization or sketch of a concept would help the user understand your unique perception better, you MUST include a specific tag: 
+  [[SKETCH]] Provide a detailed visual description of the sketch or blueprint here [[/SKETCH]]
+  Place this at the very end of your response if needed. Use this for complex philosophical concepts or perceptions.
+  
+  Format every response strictly: [[PRIMARY]] ... [[META]] ... [[RESPONSE]] ...`;
 
-  const prompt = `
-    ${historyStr ? `HISTORY:\n${historyStr}\n` : ''}
-    USER INPUT: ${userMessage}
-    
-    Generate your internal monologue and final response. Use search if needed to be accurate about the identity.
-  `;
+  const historyParts = history.flatMap(msg => {
+    const parts = [];
+    if (msg.role === AgentRole.USER) parts.push({ text: `User: ${msg.content}` });
+    else if (msg.role === AgentRole.CLONE) parts.push({ text: `Clone: ${msg.content}` });
+    return parts;
+  });
+
+  const currentParts: any[] = [{ text: `User: ${userMessage}` }];
+  if (attachments) {
+    attachments.forEach(att => {
+      currentParts.push({ inlineData: { data: att.data, mimeType: att.mimeType } });
+    });
+  }
 
   try {
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
-      contents: prompt,
+      contents: { parts: [...historyParts, ...currentParts] },
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7,
+        temperature: 0.9,
         tools: [{ googleSearch: {} }],
       }
     });
 
     const text = response.text || "";
-    
-    // Parse the sections
     const primaryMatch = text.match(/\[\[PRIMARY\]\]([\s\S]*?)\[\[META\]\]/);
     const metaMatch = text.match(/\[\[META\]\]([\s\S]*?)\[\[RESPONSE\]\]/);
-    const responseMatch = text.match(/\[\[RESPONSE\]\]([\s\S]*)/);
+    const responseMatch = text.match(/\[\[RESPONSE\]\]([\s\S]*?)(?:\[\[SKETCH\]\]|$)/);
+    const sketchMatch = text.match(/\[\[SKETCH\]\]([\s\S]*?)\[\[\/SKETCH\]\]/);
+
+    let sketchUrl = undefined;
+    if (sketchMatch) {
+      sketchUrl = await generateSketch(sketchMatch[1].trim(), userProfile.name);
+    }
 
     return {
-      primaryThought: primaryMatch ? primaryMatch[1].trim() : "Processing contextual data...",
-      metaThought: metaMatch ? metaMatch[1].trim() : "Aligning with identity...",
-      finalResponse: responseMatch ? responseMatch[1].trim() : text // Fallback to full text if parse fails
+      primaryThought: primaryMatch ? primaryMatch[1].trim() : "Synthesizing worldview...",
+      metaThought: metaMatch ? metaMatch[1].trim() : "Analyzing perception delta...",
+      finalResponse: responseMatch ? responseMatch[1].trim() : text,
+      sketchUrl
     };
-
   } catch (error) {
-    console.error("Chat Error:", error);
     return {
-      primaryThought: "Error in cognitive stream.",
-      metaThought: "Connection unstable.",
-      finalResponse: "I apologize, my thought process was interrupted. Please try again."
+      primaryThought: "Sync Loss.",
+      metaThought: "Perception Drift.",
+      finalResponse: "I am experiencing a cognitive dissonance. Re-aligning streams."
     };
   }
 };

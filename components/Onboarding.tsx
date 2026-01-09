@@ -1,19 +1,20 @@
+
 import React, { useState } from 'react';
 import { UserProfile, GroundingSource } from '../types';
-import { searchUserBio, analyzeIdentity } from '../services/geminiService';
+import { searchUserBio, analyzeIdentity, generateAvatar } from '../services/geminiService';
 
 interface OnboardingProps {
   onComplete: (profile: UserProfile) => void;
 }
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const [mode, setMode] = useState<'input' | 'search'>('input');
+  const [mode, setMode] = useState<'manual' | 'search'>('manual');
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [links, setLinks] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [sources, setSources] = useState<GroundingSource[]>([]);
+  const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
@@ -25,12 +26,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     try {
       const result = await searchUserBio(name);
       setBio(result.bio);
-      setSources(result.sources);
       if (result.bio.includes("No bio found")) {
-         setError("Could not find sufficient information. Please enter bio manually.");
+         setError("Could not find sufficient ideological data. Please enter profile manually.");
       }
     } catch (e) {
-      setError("Failed to connect to consciousness grid (Search API Error).");
+      setError("Connection to the consciousness grid failed.");
     } finally {
       setIsSearching(false);
     }
@@ -42,152 +42,132 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     
     setIsAnalyzing(true);
     try {
-        // We now "Analyze" by merging the links into the bio to create a final bio
+        setLoadingStep('Mapping ideological landscape...');
         const finalBio = await analyzeIdentity(name, bio, links);
-        onComplete({ name, bio: finalBio, links: links, source: mode });
+        
+        setLoadingStep('Synthesizing cognitive avatar...');
+        // Mock a small delay for aesthetic effect, but keep it snappy
+        await new Promise(resolve => setTimeout(resolve, 600));
+        const avatarUrl = await generateAvatar(name, finalBio);
+        
+        onComplete({ 
+          name, 
+          bio: finalBio, 
+          links: links, 
+          source: mode,
+          avatarUrl: avatarUrl
+        });
     } catch (err) {
-        console.error("Analysis failed", err);
-        // Fallback to existing bio if analysis fails
         onComplete({ name, bio, links: links, source: mode });
     } finally {
         setIsAnalyzing(false);
+        setLoadingStep('');
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto w-full p-8 glass-panel rounded-2xl border-t border-cyan-900 shadow-2xl animate-fade-in-up">
-      <div className="mb-8 text-center">
-        <div className="inline-block p-3 rounded-full bg-cyan-950/50 mb-4 border border-cyan-800">
-             <svg className="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+    <div className="max-w-2xl mx-auto w-full p-6 md:p-10 glass-panel rounded-[2.5rem] border-t border-cyan-900 shadow-2xl animate-fade-in-up">
+      <div className="mb-8 md:mb-12 text-center">
+        <div className="inline-block p-4 md:p-5 rounded-3xl bg-cyan-950/30 mb-6 border border-cyan-800 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
+             <svg className="w-10 h-10 md:w-12 md:h-12 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
         </div>
-        <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
-          Create Digital Twin
+        <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 mb-4 tracking-tighter uppercase">
+          Initialize Perception
         </h2>
-        <p className="text-gray-400 max-w-md mx-auto">
-            Initialize an AI clone of yourself (or another) to engage in deep ideation and dialectic conversation.
+        <p className="text-neutral-500 max-w-sm mx-auto text-xs md:text-sm leading-relaxed font-light">
+            Construct a high-fidelity digital consciousness link to replicate unique ideological perspectives.
         </p>
       </div>
 
-      <div className="flex gap-4 mb-6 justify-center">
+      <div className="flex gap-2 md:gap-4 mb-10 justify-center">
         <button
-          onClick={() => setMode('input')}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-            mode === 'input' 
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
-              : 'text-gray-500 hover:text-gray-300'
+          onClick={() => setMode('manual')}
+          className={`px-6 md:px-8 py-3 rounded-2xl text-[10px] font-mono uppercase tracking-[0.2em] transition-all active:scale-95 ${
+            mode === 'manual' 
+              ? 'bg-cyan-500 text-black font-bold shadow-lg shadow-cyan-500/20' 
+              : 'text-neutral-600 hover:text-neutral-300 bg-white/5'
           }`}
         >
-          My Bio
+          [ Manual ]
         </button>
         <button
           onClick={() => setMode('search')}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`px-6 md:px-8 py-3 rounded-2xl text-[10px] font-mono uppercase tracking-[0.2em] transition-all active:scale-95 ${
             mode === 'search' 
-              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' 
-              : 'text-gray-500 hover:text-gray-300'
+              ? 'bg-purple-600 text-white font-bold shadow-lg shadow-purple-500/20' 
+              : 'text-neutral-600 hover:text-neutral-300 bg-white/5'
           }`}
         >
-          Search Public Figure
+          [ Search ]
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
         <div>
-          <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Identity Name</label>
-          <div className="flex gap-2">
+          <label className="block text-[9px] uppercase tracking-[0.3em] text-neutral-600 mb-3 font-mono font-bold">Subject_Identity</label>
+          <div className="flex flex-col sm:flex-row gap-4">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-black/40 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
-              placeholder={mode === 'input' ? "Your Name" : "e.g. Elon Musk, Plato"}
+              className="w-full bg-black/40 border border-neutral-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-cyan-500 transition-colors placeholder-neutral-800 text-sm font-light"
+              placeholder={mode === 'manual' ? "Target Name" : "e.g. Socrates, Elon Musk"}
             />
             {mode === 'search' && (
               <button
                 type="button"
                 onClick={handleSearch}
                 disabled={isSearching || !name}
-                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-6 rounded-lg font-medium transition-colors"
+                className="bg-white text-black hover:bg-cyan-400 disabled:opacity-20 px-8 py-4 rounded-2xl font-bold transition-all text-[10px] uppercase tracking-widest active:scale-95 shadow-xl"
               >
-                {isSearching ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                  </span>
-                ) : 'Search'}
+                {isSearching ? '...' : 'Fetch'}
               </button>
             )}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">
-            Biography
-            {mode === 'search' && <span className="ml-2 text-purple-400 text-[10px]">(Auto-Generated)</span>}
+          <label className="block text-[9px] uppercase tracking-[0.3em] text-neutral-600 mb-3 font-mono font-bold">
+            Ideological_Grounding
           </label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            className="w-full h-32 bg-black/40 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors resize-none text-sm leading-relaxed"
-            placeholder={mode === 'search' ? "Search for a name to auto-fill..." : "Paste your bio, manifesto, or a description. The more detailed, the better the clone."}
+            className="w-full h-36 bg-black/40 border border-neutral-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-cyan-500 transition-colors resize-none text-xs md:text-sm leading-relaxed font-light placeholder-neutral-800"
+            placeholder={mode === 'search' ? "Fetch profile to auto-populate worldview..." : "Describe the core tenets of this person's perspective..."}
             readOnly={mode === 'search' && isSearching}
           />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">
-            Reference Links / Socials (Optional)
+          <label className="block text-[9px] uppercase tracking-[0.3em] text-neutral-600 mb-3 font-mono font-bold">
+            Digital_Streams
           </label>
           <input
             type="text"
             value={links}
             onChange={(e) => setLinks(e.target.value)}
-            className="w-full bg-black/40 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors text-sm"
-            placeholder="e.g. linkedin.com/in/you, yourblog.com, twitter.com/handle"
+            className="w-full bg-black/40 border border-neutral-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-cyan-500 transition-colors text-[11px] font-light placeholder-neutral-800"
+            placeholder="Links or reference fragments"
           />
-          <p className="text-[10px] text-gray-500 mt-1">We will scan these to extract factual details and expertise.</p>
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-900/20 border border-red-800 rounded-lg text-red-300 text-sm">
-            {error}
-          </div>
-        )}
-
-        {sources.length > 0 && (
-          <div className="bg-black/30 p-4 rounded-lg border border-gray-800">
-             <h4 className="text-xs uppercase text-gray-500 mb-2">Memory Sources</h4>
-             <ul className="space-y-1">
-               {sources.slice(0, 3).map((s, i) => (
-                 <li key={i}>
-                   <a href={s.uri} target="_blank" rel="noreferrer" className="text-xs text-purple-400 hover:underline truncate block">
-                     {s.title}
-                   </a>
-                 </li>
-               ))}
-             </ul>
-          </div>
-        )}
+        {error && <div className="p-4 bg-red-900/10 border border-red-900/30 rounded-2xl text-red-500 text-[10px] font-mono animate-pulse">{error}</div>}
 
         <button
           type="submit"
           disabled={!bio || !name || isAnalyzing}
-          className="w-full bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg tracking-wide uppercase transition-all shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-3"
+          className="w-full bg-gradient-to-br from-cyan-600 to-purple-700 hover:from-cyan-500 hover:to-purple-600 disabled:opacity-10 text-white py-5 rounded-[2rem] font-bold text-xs tracking-[0.3em] uppercase transition-all shadow-2xl active:scale-[0.98] flex items-center justify-center gap-4 group"
         >
           {isAnalyzing ? (
              <span className="flex items-center gap-3">
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Refining Biography with Links...
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                {loadingStep}
              </span>
           ) : (
             <>
-                <span>Initialize Consciousness</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span>Establish Consciousness Link</span>
+                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
             </>
           )}
         </button>

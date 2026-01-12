@@ -35,7 +35,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({ text, speed = 10
   }, [text, speed]);
 
   return (
-    <div className={`prose prose-invert prose-sm max-w-none ${className} [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 font-light`}>
+    <div className={`prose prose-invert prose-base max-w-none ${className} [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 font-normal leading-[1.7]`}>
       <ReactMarkdown>{displayedText}</ReactMarkdown>
     </div>
   );

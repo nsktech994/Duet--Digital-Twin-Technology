@@ -367,7 +367,7 @@ export const Simulation: React.FC<SimulationProps> = ({ userProfile, onBack }) =
       setIsLiveActive(true);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-1.5-flash-002',
         callbacks: {
           onopen: () => {
             const source = inputCtx.createMediaStreamSource(stream);
@@ -419,7 +419,7 @@ export const Simulation: React.FC<SimulationProps> = ({ userProfile, onBack }) =
         analyserRef.current.getByteFrequencyData(dataArray);
         const avg = (dataArray.reduce((a, b) => a + b) / dataArray.length) / 160;
         setAudioAmplitude(avg);
-        if (setIsLiveActive) requestAnimationFrame(updateAmplitude);
+        if (isLiveActive) requestAnimationFrame(updateAmplitude);
       };
       updateAmplitude();
     } catch (err) { setIsLiveActive(false); }

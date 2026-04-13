@@ -5,8 +5,8 @@ import { SearchResult, AgentRole, AgentMessage, UserProfile, Attachment, Context
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const MODEL_NAME = "gemini-3-flash-preview";
-const IMAGE_MODEL = "gemini-2.5-flash-image";
+const MODEL_NAME = "gemini-1.5-flash";
+const IMAGE_MODEL = "gemini-1.5-flash";
 
 export const searchUserBio = async (name: string): Promise<SearchResult> => {
   try {

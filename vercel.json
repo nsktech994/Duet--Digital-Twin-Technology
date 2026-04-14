@@ -1,0 +1,1 @@
+{\n  "build": {\n    "env": {\n      "MY_ENV_VAR": "value"\n    },\n    "commands": [\n      "npm install",\n      "npm run build"\n    ]\n  }\n}
